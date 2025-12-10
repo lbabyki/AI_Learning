@@ -6,6 +6,8 @@
 - [2. USER JOURNEY](#2-user-journey)
 - [3. SYSTEM FLOW & KIẾN TRÚC](#3-system-flow--kiến-trúc)
 - [4. DEVELOPMENT SETUP & STRUCTURE](#4-development-setup--structure)
+- [5. DATABASE SCHEMA](#5-database-schema)
+- [6. SUPABASE EDGE FUNCTIONS](#6-supabase-edge-functions)
 
 ---
 
@@ -159,32 +161,288 @@ User → Next.js FE → Supabase Auth → Database
 
 #### 3.2.1 Authentication Flow
 
-```
-User → Next.js → Supabase Auth → Session → RLS → Data
-```
-
-#### 3.2.2 Course Learning Flow
+**Luồng đăng nhập/đăng ký:**
 
 ```
-User → Next.js page → Supabase DB → RLS filter → return course
-User → finish lesson → update progress
+User → Next.js Login Page
+    → Supabase Auth (email/password hoặc OAuth)
+    → Generate Session Token
+    → Store in Cookie (httpOnly)
+    → Next.js Middleware verify session
+    → RLS check permissions
+    → Redirect to Dashboard
 ```
 
-#### 3.2.3 AI Chat Flow (RAG)
+**Chức năng liên quan:**
+
+- Đăng ký tài khoản mới
+- Đăng nhập (email/password, Google, GitHub)
+- Quên mật khẩu & reset
+- Xác thực session cho mọi request
+- Logout & clear session
+
+---
+
+#### 3.2.2 Assessment & Onboarding Flow
+
+**Luồng đánh giá năng lực (AI-powered):**
 
 ```
-User question → embedding → vector search → retrieve top K
-→ AI SDK generate answer → save history → FE render
+1. User chọn lĩnh vực & mức độ
+   → POST /api/v1/assessments/generate
+   → Next.js Server Action
+   → Edge Function: assessment_generate
+   → AI (Gemini) sinh câu hỏi dựa trên courses
+   → Save to ai_assessments table
+   → Return questions[] to FE
+
+2. User làm bài test
+   → FE track thời gian & answers
+   → POST /api/v1/assessments/submit
+   → Edge Function: assessment_score
+   → AI phân tích kết quả theo skill tags
+   → Calculate score & level
+   → Save to ai_results table
+   → Return detailed feedback
+
+3. AI tạo lộ trình cá nhân hóa
+   → GET /api/v1/recommendations/from-assessment
+   → AI phân tích lỗ hổng kiến thức
+   → Query courses phù hợp từ DB
+   → Rank theo độ ưu tiên
+   → Save to ai_recommendations table
+   → Return personalized learning path
 ```
 
-#### 3.2.4 Quiz Flow
+**Tables sử dụng:** `ai_assessments`, `ai_results`, `ai_recommendations`, `courses`
+
+---
+
+#### 3.2.3 Course Discovery & Enrollment Flow
+
+**Luồng tìm kiếm & đăng ký khóa học:**
 
 ```
-User → request quiz
-→ Next.js → Edge Function quiz_generate
-→ AI SDK sinh câu hỏi
-→ Save quiz vào DB → FE render
+1. Tìm kiếm khóa học
+   → GET /api/v1/courses/search?q=python&level=beginner
+   → Next.js API Route
+   → Supabase query courses table
+   → Apply filters (category, level, rating)
+   → RLS check visibility
+   → Return paginated results
+
+2. Xem chi tiết khóa học
+   → GET /api/v1/courses/{id}
+   → Query courses + modules + lessons
+   → Check enrollment status
+   → Return full course structure
+
+3. Đăng ký khóa học
+   → POST /api/v1/enrollments
+   → Validate: user not enrolled, course published
+   → Insert into course_enrollments
+   → Initialize lesson_progress records
+   → Return enrollment_id
 ```
+
+**Tables sử dụng:** `courses`, `modules`, `lessons`, `course_enrollments`, `lesson_progress`
+
+---
+
+#### 3.2.4 Learning & Progress Tracking Flow
+
+**Luồng học tập & theo dõi tiến độ:**
+
+```
+1. Xem nội dung lesson
+   → GET /api/v1/courses/{id}/modules/{moduleId}/lessons/{lessonId}
+   → Check enrollment & prerequisites
+   → Query lesson content + resources
+   → Track view time
+   → Return lesson data
+
+2. Hoàn thành lesson
+   → POST /api/v1/lessons/{id}/complete
+   → Update lesson_progress (completed = true)
+   → Calculate module progress
+   → Calculate course progress
+   → Unlock next lesson (if sequential)
+   → Return updated progress
+
+3. Làm quiz
+   → GET /api/v1/quizzes/{id}
+   → Return quiz questions
+   → User submit answers
+   → POST /api/v1/quizzes/{id}/attempt
+   → Edge Function: quiz_submit
+   → Calculate score & check pass (≥70% + mandatory questions)
+   → Save to quiz_attempts
+   → If pass: unlock next lesson
+   → If fail: generate new quiz variant
+   → Return results + feedback
+```
+
+**Tables sử dụng:** `lessons`, `lesson_progress`, `quiz`, `quiz_questions`, `quiz_attempts`
+
+---
+
+#### 3.2.5 AI Chat Flow (RAG)
+
+**Luồng chat với AI có context khóa học:**
+
+```
+1. User gửi câu hỏi
+   → POST /api/v1/chat/course/{courseId}
+   → Next.js Server Action
+   → Edge Function: chat_course
+
+2. RAG Processing
+   → Embed user question (AI SDK)
+   → Vector search in Supabase Vector DB
+   → Retrieve top K relevant lessons/modules
+   → Build context from course content
+
+3. AI Generate Response
+   → Send context + question to AI (Gemini)
+   → AI generate answer
+   → Extract source references
+
+4. Save & Return
+   → Save to ai_chat_history + ai_messages
+   → Return response + sources[] to FE
+   → FE render with markdown + code highlight
+```
+
+**Tables sử dụng:** `ai_chat_history`, `ai_messages`, `courses`, `lessons` (vector embeddings)
+
+---
+
+#### 3.2.6 Quiz Generation Flow (AI)
+
+**Luồng tạo quiz tự động:**
+
+```
+1. Request quiz generation
+   → POST /api/v1/quizzes/generate
+   → Input: lesson_id, difficulty, question_count
+   → Edge Function: quiz_generate
+
+2. AI Processing
+   → Fetch lesson content
+   → AI (Gemini) analyze content
+   → Generate questions based on:
+      - Learning outcomes
+      - Key concepts
+      - Difficulty level
+   → Create multiple choice, fill-in-blank, drag-drop
+
+3. Save & Return
+   → Save to quiz + quiz_questions tables
+   → Mark mandatory questions (điểm liệt)
+   → Return quiz_id + questions[]
+```
+
+**Tables sử dụng:** `quiz`, `quiz_questions`, `lessons`
+
+---
+
+#### 3.2.7 Personal Course Creation Flow
+
+**Luồng tạo khóa học cá nhân:**
+
+```
+Option 1: AI-Generated Course
+   → POST /api/v1/courses/from-prompt
+   → User input: natural language description
+   → AI analyze prompt
+   → Generate course structure:
+      - Modules (ordered logically)
+      - Lessons per module
+      - Learning outcomes
+      - Basic content
+   → Save to personal_courses, personal_modules, personal_lessons
+   → Return preview for user confirmation
+
+Option 2: Manual Creation
+   → POST /api/v1/courses/personal
+   → User input: title, description, category, level
+   → Create empty course (status: draft)
+   → Return course_id
+   → User manually add modules & lessons
+```
+
+**Tables sử dụng:** `personal_courses`, `personal_modules`, `personal_lessons`
+
+---
+
+#### 3.2.8 Instructor Class Management Flow
+
+**Luồng quản lý lớp học (Instructor):**
+
+```
+1. Tạo lớp học
+   → POST /api/v1/classes
+   → Select base course
+   → Input: name, description, start/end date, max students
+   → Generate unique invite code (6-8 chars)
+   → Save to classes table
+   → Return class_id + invite_code
+
+2. Student join class
+   → POST /api/v1/classes/join
+   → Input: invite_code
+   → Validate: code exists, class not full, not expired
+   → Insert into class_students
+   → Initialize class_progress
+   → Return success
+
+3. Track student progress
+   → GET /api/v1/classes/{id}/students/{studentId}
+   → Query class_progress + lesson_progress + quiz_attempts
+   → Calculate metrics:
+      - Completion percentage
+      - Average quiz score
+      - Time spent
+   → Return detailed analytics
+```
+
+**Tables sử dụng:** `classes`, `class_students`, `class_progress`, `courses`
+
+---
+
+#### 3.2.9 Admin Management Flow
+
+**Luồng quản trị hệ thống:**
+
+```
+1. User Management
+   → GET /api/v1/admin/users
+   → Query users + profiles + user_roles
+   → Apply filters & search
+   → Return paginated user list
+
+   → PUT /api/v1/admin/users/{id}/role
+   → Validate new role
+   → Update user_roles table
+   → Check impact (classes, courses affected)
+   → Return success
+
+2. Course Management
+   → GET /api/v1/admin/courses
+   → Query all courses (public + personal)
+   → Show analytics (enrollments, completion rate)
+   → Admin can edit/delete any course
+
+3. System Dashboard
+   → GET /api/v1/admin/dashboard
+   → Aggregate statistics:
+      - Total users by role
+      - Active courses & classes
+      - System activity metrics
+   → Return dashboard data
+```
+
+**Tables sử dụng:** `users`, `profiles`, `user_roles`, `courses`, `classes`
 
 ### 3.3 Architectural Layers
 
