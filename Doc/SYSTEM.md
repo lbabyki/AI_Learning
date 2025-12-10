@@ -1,5 +1,38 @@
 # WORKFLOW HỆ THỐNG
 
+## 📑 Mục lục
+
+| Phần  | Nội dung                          | Link                                                   |
+| ----- | --------------------------------- | ------------------------------------------------------ |
+| **1** | **WORKFLOW HỆ THỐNG**             | [↓](#1-workflow-hệ-thống)                              |
+| 1.1   | Tổng quan hệ thống                | [↓](#11-tổng-quan-hệ-thống)                            |
+| 1.2   | Luồng hoạt động tổng quát         | [↓](#12-luồng-hoạt-động-tổng-quát-high-level-workflow) |
+| 1.2.1 | Authentication workflow           | [↓](#121-authentication-workflow)                      |
+| 1.2.2 | Learning workflow                 | [↓](#122-learning-workflow)                            |
+| 1.2.3 | Instructor workflow               | [↓](#123-instructor-workflow)                          |
+| 1.2.4 | AI workflow                       | [↓](#124-ai-workflow)                                  |
+| 1.3   | Key Components Overview           | [↓](#13-key-components-overview)                       |
+| 1.4   | Các tài nguyên chính              | [↓](#14-các-tài-nguyên-chính)                          |
+| 1.5   | Yêu cầu phi chức năng             | [↓](#15-yêu-cầu-phi-chức-năng)                         |
+| **2** | **USER JOURNEY**                  | [↓](#2-user-journey)                                   |
+| 2.1   | Student Journey                   | [↓](#21-student-journey)                               |
+| 2.2   | Instructor Journey                | [↓](#22-instructor-journey)                            |
+| 2.3   | Admin Journey                     | [↓](#23-admin-journey)                                 |
+| **3** | **SYSTEM FLOW & KIẾN TRÚC**       | [↓](#3-system-flow--kiến-trúc)                         |
+| 3.1   | System Architecture Overview      | [↓](#31-system-architecture-overview)                  |
+| 3.2   | Data Flow Architecture            | [↓](#32-data-flow-architecture)                        |
+| 3.2.1 | Authentication Flow               | [↓](#321-authentication-flow)                          |
+| 3.2.2 | Course Learning Flow              | [↓](#322-course-learning-flow)                         |
+| 3.2.3 | AI Chat Flow (RAG)                | [↓](#323-ai-chat-flow-rag)                             |
+| 3.2.4 | Quiz Flow                         | [↓](#324-quiz-flow)                                    |
+| 3.3   | Architectural Layers              | [↓](#33-architectural-layers)                          |
+| **4** | **DEVELOPMENT SETUP & STRUCTURE** | [↓](#4-development-setup--structure)                   |
+| 4.1   | Development Requirements          | [↓](#41-development-requirements)                      |
+| 4.2   | Development Workflow              | [↓](#42-development-workflow)                          |
+| 4.3   | Project Folder Structure          | [↓](#43-project-folder-structure)                      |
+
+---
+
 ## 1. WORKFLOW HỆ THỐNG
 
 ### 1.1 Tổng quan hệ thống
@@ -254,13 +287,4 @@ project/
 
 ---
 
-## Tổng kết
-
-Tài liệu này mô tả workflow và kiến trúc hệ thống học tập sử dụng **Next.js** và **Supabase**, bao gồm:
-
-- ✅ Tổng quan hệ thống và các luồng hoạt động chính
-- ✅ User journey cho Student, Instructor và Admin
-- ✅ Kiến trúc hệ thống và data flow
-- ✅ Cấu trúc dự án và quy trình phát triển
-
-Hệ thống được thiết kế để tối ưu hóa hiệu suất, bảo mật và khả năng mở rộng với sự kết hợp mạnh mẽ giữa Next.js và Supabase.
+Kết thúc tài liệu SYSTEM.md
