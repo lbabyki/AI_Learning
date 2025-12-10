@@ -2,10 +2,10 @@
 
 ## 📑 Mục lục
 
-- [1. WORKFLOW HỆ THỐNG](#1-workflow-hệ-thống)
-- [2. USER JOURNEY](#2-user-journey)
-- [3. SYSTEM FLOW & KIẾN TRÚC](#3-system-flow--kiến-trúc)
-- [4. DEVELOPMENT SETUP & STRUCTURE](#4-development-setup--structure)
+[1. WORKFLOW HỆ THỐNG](#1-workflow-hệ-thống)
+[2. USER JOURNEY](#2-user-journey)
+[3. SYSTEM FLOW & KIẾN TRÚC](#3-system-flow--kiến-trúc)
+[4. DEVELOPMENT SETUP & STRUCTURE](#4-development-setup--structure)
 
 ---
 
