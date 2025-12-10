@@ -263,4 +263,225 @@ project/
 
 ---
 
+## 5. DATABASE SCHEMA
+
+### 5.1 User & Roles
+
+| Table        | Mô tả                                                |
+| ------------ | ---------------------------------------------------- |
+| `users`      | Thông tin người dùng cơ bản (sync với Supabase Auth) |
+| `profiles`   | Thông tin profile mở rộng (avatar, bio, preferences) |
+| `roles`      | Danh sách các role (student, instructor, admin)      |
+| `user_roles` | Mapping user với roles (many-to-many)                |
+
+### 5.2 Courses
+
+| Table                | Mô tả                                                  |
+| -------------------- | ------------------------------------------------------ |
+| `courses`            | Thông tin khóa học (title, description, instructor_id) |
+| `modules`            | Modules trong khóa học                                 |
+| `lessons`            | Bài học trong module                                   |
+| `resources`          | Tài liệu đính kèm (files, links, videos)               |
+| `quiz`               | Bài quiz                                               |
+| `quiz_questions`     | Câu hỏi trong quiz                                     |
+| `quiz_attempts`      | Lịch sử làm quiz của học viên                          |
+| `lesson_progress`    | Tiến độ học từng lesson                                |
+| `course_enrollments` | Đăng ký khóa học của học viên                          |
+
+### 5.3 Personal Courses
+
+| Table              | Mô tả                          |
+| ------------------ | ------------------------------ |
+| `personal_courses` | Khóa học cá nhân do AI tạo     |
+| `personal_modules` | Modules trong khóa học cá nhân |
+| `personal_lessons` | Lessons trong khóa học cá nhân |
+
+### 5.4 Instructor Class
+
+| Table            | Mô tả                                   |
+| ---------------- | --------------------------------------- |
+| `classes`        | Lớp học do instructor quản lý           |
+| `class_students` | Danh sách học viên trong lớp            |
+| `class_progress` | Tiến độ học của từng học viên trong lớp |
+
+### 5.5 AI
+
+| Table                | Mô tả                           |
+| -------------------- | ------------------------------- |
+| `ai_assessments`     | Bài đánh giá năng lực do AI tạo |
+| `ai_results`         | Kết quả đánh giá năng lực       |
+| `ai_recommendations` | Gợi ý khóa học từ AI            |
+| `ai_chat_history`    | Lịch sử chat sessions           |
+| `ai_messages`        | Tin nhắn trong chat (user + AI) |
+
+---
+
+## 6. SUPABASE EDGE FUNCTIONS
+
+### 6.1 Edge Functions Overview
+
+| Function              | Vai trò                                | Input                       | Output                     |
+| --------------------- | -------------------------------------- | --------------------------- | -------------------------- |
+| `assessment_generate` | Sinh bộ câu hỏi đánh giá năng lực (AI) | user_id, topic, level       | assessment_id, questions[] |
+| `assessment_score`    | Chấm điểm bài đánh giá                 | assessment_id, answers[]    | score, feedback, level     |
+| `quiz_generate`       | Sinh quiz tự động theo lesson/module   | lesson_id/module_id, count  | quiz_id, questions[]       |
+| `quiz_submit`         | Chấm điểm quiz và tính pass/fail       | quiz_id, answers[]          | score, passed, feedback    |
+| `chat_course`         | Chat AI có context RAG từ khóa học     | course_id, message, history | response, sources[]        |
+| `practice_generate`   | Sinh bài tập luyện tập                 | lesson_id, difficulty       | practice_id, exercises[]   |
+
+### 6.2 Edge Function Details
+
+#### 6.2.1 assessment_generate
+
+```typescript
+// Input
+{
+  user_id: string,
+  topic: string,
+  level?: 'beginner' | 'intermediate' | 'advanced'
+}
+
+// Output
+{
+  assessment_id: string,
+  questions: [
+    {
+      id: string,
+      question: string,
+      options: string[],
+      type: 'multiple_choice' | 'true_false'
+    }
+  ]
+}
+```
+
+#### 6.2.2 assessment_score
+
+```typescript
+// Input
+{
+  assessment_id: string,
+  answers: { question_id: string, answer: string }[]
+}
+
+// Output
+{
+  score: number,
+  total: number,
+  percentage: number,
+  level: string,
+  feedback: string,
+  recommendations: string[]
+}
+```
+
+#### 6.2.3 quiz_generate
+
+```typescript
+// Input
+{
+  lesson_id?: string,
+  module_id?: string,
+  question_count: number,
+  difficulty?: 'easy' | 'medium' | 'hard'
+}
+
+// Output
+{
+  quiz_id: string,
+  questions: [
+    {
+      id: string,
+      question: string,
+      options: string[],
+      correct_answer: string,
+      explanation: string
+    }
+  ]
+}
+```
+
+#### 6.2.4 quiz_submit
+
+```typescript
+// Input
+{
+  quiz_id: string,
+  user_id: string,
+  answers: { question_id: string, answer: string }[]
+}
+
+// Output
+{
+  attempt_id: string,
+  score: number,
+  total: number,
+  percentage: number,
+  passed: boolean,
+  feedback: string,
+  results: [
+    {
+      question_id: string,
+      correct: boolean,
+      user_answer: string,
+      correct_answer: string,
+      explanation: string
+    }
+  ]
+}
+```
+
+#### 6.2.5 chat_course
+
+```typescript
+// Input
+{
+  course_id: string,
+  user_id: string,
+  message: string,
+  chat_history_id?: string
+}
+
+// Output
+{
+  response: string,
+  sources: [
+    {
+      lesson_id: string,
+      lesson_title: string,
+      excerpt: string
+    }
+  ],
+  chat_history_id: string,
+  message_id: string
+}
+```
+
+#### 6.2.6 practice_generate
+
+```typescript
+// Input
+{
+  lesson_id: string,
+  difficulty: 'easy' | 'medium' | 'hard',
+  exercise_count: number
+}
+
+// Output
+{
+  practice_id: string,
+  exercises: [
+    {
+      id: string,
+      type: 'coding' | 'problem_solving' | 'essay',
+      question: string,
+      hints: string[],
+      solution?: string
+    }
+  ]
+}
+```
+
+---
+
 Kết thúc tài liệu SYSTEM.md
